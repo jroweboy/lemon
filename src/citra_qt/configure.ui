@@ -44,6 +44,11 @@
          <string>Audio</string>
        </attribute>
      </widget>
+     <widget class="ConfigureLayout" name="layoutTab">
+      <attribute name="title">
+       <string>Layout</string>
+      </attribute>
+     </widget>
      <widget class="ConfigureDebug" name="debugTab">
       <attribute name="title">
        <string>Debug</string>
@@ -77,6 +82,12 @@
    <class>ConfigureAudio</class>
    <extends>QWidget</extends>
    <header>configure_audio.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ConfigureLayout</class>
+   <extends>QWidget</extends>
+   <header>configure_layout.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>

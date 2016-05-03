@@ -512,8 +512,7 @@ void GMainWindow::ToggleWindowMode() {
 void GMainWindow::OnConfigure() {
     ConfigureDialog configureDialog(this, emulation_running);
     auto result = configureDialog.exec();
-    if (result == QDialog::Accepted)
-    {
+    if (result == QDialog::Accepted) {
         configureDialog.applyConfiguration();
         render_window->ReloadSetKeymaps();
         config->Save();

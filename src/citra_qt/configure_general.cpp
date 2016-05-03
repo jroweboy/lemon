@@ -29,5 +29,4 @@ void ConfigureGeneral::applyConfiguration() {
     UISettings::values.gamedir_deepscan = ui->toggle_deepscan->isChecked();
     UISettings::values.confirm_before_closing = ui->toggle_check_exit->isChecked();
     Settings::values.region_value = ui->region_combobox->currentIndex();
-    Settings::Apply();
 }
