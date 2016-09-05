@@ -248,6 +248,7 @@ add_subdirectory(externals/soundtouch)
 if (WIN_CREATE_INSTALLER)
     # CPR includes a test folder that conflicts with citras tests so just turn it off
     SET(BUILD_CPR_TESTS OFF CACHE BOOL "Prevent conflicts with our tests")
+    SET(CMAKE_USE_OPENSSL OFF CACHE BOOL "")
     add_subdirectory(externals/cpr)
 endif()
 

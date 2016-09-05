@@ -14,7 +14,8 @@ deploy:
     secure: MeBSKRVxvUlkHpCbV+PhpGMmvM2Xh4gkjf4/gWvCtl1ix/VJQPbs7L/PNU7IS66C
   artifact: RELEASES,FullPkg,DeltaPkg,Installer
   draft: false
-  prerelease: true
+  # github tags api doesn't return prelease tags >.<
+  prerelease: false
 
 environment:
   BUILD_PASSWORD:

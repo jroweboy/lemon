@@ -144,8 +144,8 @@ int main(int argc, char** argv) {
     auto r = cpr::Get(cpr::Url{"https://api.github.com/repos/jroweboy/lemon/releases/latest"});
     if (r.status_code == 200) {
         // fetch the tag name from the json
-        std::regex tag_regex(".*\"tag_name\":\\s*\"(.*)\".*");
         std::smatch match;
+        std::regex tag_regex(".*\"tag_name\":\\s*\"(.*)\".*");
         if (std::regex_search(r.text, match, tag_regex)) {
             std::string tag_name = match[1];
             // download the latest version and get it ready
