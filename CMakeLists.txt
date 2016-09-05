@@ -245,6 +245,12 @@ endif()
 
 add_subdirectory(externals/soundtouch)
 
+if (WIN_CREATE_INSTALLER)
+    # CPR includes a test folder that conflicts with citras tests so just turn it off
+    set(BUILD_CPR_TESTS OFF)
+    add_subdirectory(externals/cpr)
+endif()
+
 enable_testing()
 
 add_subdirectory(src)

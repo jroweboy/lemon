@@ -1,12 +1,14 @@
-#include <cstring>
 #include <string>
 #include <iostream>
-#include <fstream>
+#include <regex>
 #include <windows.h>
 
+#include <cpr/cpr.h>
+
+// Have to include getopt in the compilation unit or else its compiled with the wrong runtime
 #include "getopt.h"
 
-std::string startProcessWrapper(std::string name, std::string args, boolean wait) { //) {//, boolean hidden,
+void startProcessWrapper(std::string name, std::string args, boolean wait) { //) {//, boolean hidden,
     HANDLE stdout_handle = NULL;
     STARTUPINFO startupInfo={sizeof(startupInfo)};
     // if (hidden) {
@@ -25,27 +27,12 @@ std::string startProcessWrapper(std::string name, std::string args, boolean wait
         std::cout << "CreateProcess failed (" << GetLastError() << ")" << std::endl;
         CloseHandle(processInfo.hProcess);
         CloseHandle(processInfo.hThread);
-        return "";
     }
     if (wait) {
         WaitForSingleObject(&processInfo.hProcess, INFINITE);
     }
     CloseHandle(processInfo.hProcess);
     CloseHandle(processInfo.hThread);
-
-    std::string output;
-    {
-        CHAR chBuf[2048];
-        DWORD dwRead;
-        BOOL bSuccess = FALSE;
-
-        while (true) {
-            bSuccess = ReadFile(stdout_handle, chBuf, 2048, &dwRead, NULL);
-            if( ! bSuccess || dwRead == 0 ) break;
-            output += chBuf;
-        }
-    }
-    return output;
 }
 
 void displayWelcome() {
@@ -149,15 +136,23 @@ int main(int argc, char** argv) {
             optind++;
         }
     }
-    // check for updates
-    std::string output = startProcessWrapper(updater_exe, "Update.exe --checkForUpdate=citra-qt.exe", true); //, true, true);
-    std::ofstream myfile;
-    myfile.open("test.log");
-    myfile << output;
-    myfile.close();
-    // download latest version
-
     // Normal Run so just start citra-qt
     startProcessWrapper(updater_exe, "Update.exe --processStart=citra-qt.exe", false); //, true, true);
+
+    // check for updates in the background
+    // fetch the latest tag number from github
+    auto r = cpr::Get(cpr::Url{"https://api.github.com/repos/jroweboy/lemon/releases/latest"});
+    if (r.status_code == 200) {
+        // fetch the tag name from the json
+        std::regex tag_regex(".*\"tag_name\":\\s*\"(.*)\".*");
+        std::smatch match;
+        if (std::regex_search(r.text, match, tag_regex)) {
+            std::string tag_name = match[1];
+            // download the latest version and get it ready
+            startProcessWrapper(updater_exe, "Update.exe --update=https://www.github.com/jroweboy/lemon/"+tag_name, true);
+            // and we are done! Next boot it'll point to the new version.
+        }
+    }
+
     return 0;
 }

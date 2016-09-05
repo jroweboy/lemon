@@ -1,9 +1,14 @@
 # shallow clone
 clone_depth: 5
 
+skip_tags: true
+
 deploy:
   release: lemon-$(appveyor_build_number)
-  description: 'Built by Lemon - The Citra beta builds. Build number $(appveyor_build_number)'
+  description: |
+    Built by Lemon - The Citra beta builds. Build number $(appveyor_build_number)
+
+    If you are unsure what do download from this page, download the latest Setup.exe and run that
   provider: GitHub
   auth_token:
     secure: MeBSKRVxvUlkHpCbV+PhpGMmvM2Xh4gkjf4/gWvCtl1ix/VJQPbs7L/PNU7IS66C
@@ -72,14 +77,13 @@ after_build:
             7z e "$CMAKE_BINARY_DIR/squirrel/squirrel.zip" -o"$CMAKE_BINARY_DIR/squirrel" -r -y | Out-Null
         }
         # download the current release to create a diff
-        #$LATEST_RELEASE_URL = "https://github.com/jroweboy/lemon/releases/latest"
-        #$LATEST_RELEASE_JSON = Invoke-WebRequest $LATEST_RELEASE_URL -Headers @{"Accept"="application/json"}
-        #$LATEST_RELEASE_JSON.Content -match '.*"tag_name":"(.*)".*' | Out-Null
-        #$LATEST_RELEASE_TAG = $Matches[1]
-        #Write-Host "$LATEST_RELEASE_TAG"
-        #$RELEASE_URL = "https://github.com/jroweboy/lemon/releases/download/$LATEST_RELEASE_TAG"
-        #(New-Object Net.WebClient).DownloadFile("$RELEASE_URL/RELEASES", "$SQUIRREL_RELEASE_DIR/RELEASES")
-        #(New-Object Net.WebClient).DownloadFile("$RELEASE_URL/Citra.0.1.$LATEST_RELEASE_TAG.nupkg", "$SQUIRREL_RELEASE_DIR/Citra.0.1.$LATEST_RELEASE_TAG.nupkg")
+        $LATEST_RELEASE_URL = "https://api.github.com/jroweboy/lemon/releases/latest"
+        $LATEST_RELEASE_JSON = Invoke-WebRequest $LATEST_RELEASE_URL -Headers @{"Accept"="application/json"}
+        $LATEST_RELEASE_JSON.Content -match '.*"tag_name":\s*"(.*)".*' | Out-Null
+        $LATEST_RELEASE_TAG = $Matches[1]
+        $RELEASE_URL = "https://api.github.com/jroweboy/lemon/releases/download/$LATEST_RELEASE_TAG"
+        (New-Object Net.WebClient).DownloadFile("$RELEASE_URL/RELEASES", "$SQUIRREL_RELEASE_DIR/RELEASES")
+        (New-Object Net.WebClient).DownloadFile("$RELEASE_URL/Citra.0.1.$LATEST_RELEASE_TAG.nupkg", "$SQUIRREL_RELEASE_DIR/Citra.0.1.$LATEST_RELEASE_TAG.nupkg")
 
         # make the path we'll copy the output to post build
         New-Item -ItemType Directory -Force -Path $SQUIRREL_BUILD_DIR | Out-Null

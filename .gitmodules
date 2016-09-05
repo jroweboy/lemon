@@ -13,3 +13,6 @@
 [submodule "catch"]
 	path = externals/catch
 	url = https://github.com/philsquared/Catch.git
+[submodule "externals/cpr"]
+    path = externals/cpr
+    url = https://github.com/whoshuu/cpr
