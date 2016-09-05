@@ -149,10 +149,9 @@ int main(int argc, char** argv) {
         if (std::regex_search(r.text, match, tag_regex)) {
             std::string tag_name = match[1];
             // download the latest version and get it ready
-            startProcessWrapper(updater_exe, "Update.exe --update=https://www.github.com/jroweboy/lemon/"+tag_name, true);
+            startProcessWrapper(updater_exe, "Update.exe --update=https://github.com/jroweboy/lemon/releases/download/"+tag_name, true);
             // and we are done! Next boot it'll point to the new version.
         }
     }
-
     return 0;
 }
