@@ -50,6 +50,12 @@ static const std::array<Values, NUM_INPUTS> All = {{
 }};
 }
 
+enum class LayoutOption {
+    Default,
+    SingleScreen,
+    LargeScreen,
+    Custom,
+};
 
 struct Values {
     // CheckNew3DS
@@ -73,6 +79,9 @@ struct Values {
     bool use_shader_jit;
     bool use_scaled_resolution;
     bool use_vsync;
+
+    LayoutOption layout_option;
+    bool swap_screen;
 
     float bg_red;
     float bg_green;
