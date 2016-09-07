@@ -1,6 +1,22 @@
 # shallow clone
 clone_depth: 5
 
+skip_tags: true
+
+deploy:
+  release: lemon-$(appveyor_build_number)
+  description: |
+    Built by Lemon - The Citra beta builds. Build number $(appveyor_build_number)
+
+    If you are unsure what do download from this page, download the latest Setup.exe and run that
+  provider: GitHub
+  auth_token:
+    secure: MeBSKRVxvUlkHpCbV+PhpGMmvM2Xh4gkjf4/gWvCtl1ix/VJQPbs7L/PNU7IS66C
+  artifact: RELEASES,FullPkg,DeltaPkg,Installer
+  draft: false
+  # github tags api doesn't return prelease tags >.<
+  prerelease: false
+
 environment:
   BUILD_PASSWORD:
     secure: EXGNlWKJsCtbeImEJ5EP9qrxZ+EqUFfNy+CP61nDOMA=
@@ -23,7 +39,7 @@ install:
 before_build:
   - mkdir build
   - cd build
-  - cmake -G "Visual Studio 14 2015 Win64" -DCITRA_USE_BUNDLED_QT=1 -DCITRA_USE_BUNDLED_SDL2=1 ..
+  - cmake -G "Visual Studio 14 2015 Win64" -DCITRA_USE_BUNDLED_QT=1 -DCITRA_USE_BUNDLED_SDL2=1 -DWIN_CREATE_INSTALLER=1 ..
   - cd ..
 
 build:
@@ -33,11 +49,82 @@ build:
 test_script:
   - cd build && ctest -VV -C Release && cd ..
 
+after_build:
+  - ps: |
+        rm .\build\bin\release\*.pdb
+
+        # Build the installer
+        $APPVEYOR_BUILD_NUMBER = "$env:APPVEYOR_BUILD_NUMBER"
+        $CMAKE_SOURCE_DIR = "$env:APPVEYOR_BUILD_FOLDER"
+        $CMAKE_BINARY_DIR = "$CMAKE_SOURCE_DIR/build"
+        $BIN_FOLDER = "$CMAKE_BINARY_DIR/bin/Release"
+        $SQUIRREL_DIR = "$CMAKE_BINARY_DIR/squirrel.win"
+        $SQUIRREL_RELEASE_DIR = "$SQUIRREL_DIR/Release"
+        $SQUIRREL_BUILD_DIR = "$SQUIRREL_DIR/Build"
+        $SQUIRREL_BIN_DIR = "$SQUIRREL_BUILD_DIR/lib/net45"
+        $MSVC_RUNTIME_INSTALLER = "C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/redist/1033/vcredist_x64.exe"
+
+        # download nuget cmdline if it doesn't exist
+        if (!(Test-Path -Path "$CMAKE_BINARY_DIR/nuget")) {
+            New-Item -ItemType Directory -Force -Path "$CMAKE_BINARY_DIR/nuget" | Out-Null
+            (New-Object Net.WebClient).DownloadFile("https://dist.nuget.org/win-x86-commandline/v3.4.4/NuGet.exe",
+                "$CMAKE_BINARY_DIR/nuget/nuget.exe")
+        }
+        # download squirrel if it doesn't exist
+        if (!(Test-Path -Path "$CMAKE_BINARY_DIR/squirrel")) {
+            New-Item -ItemType Directory -Force -Path "$CMAKE_BINARY_DIR/squirrel" | Out-Null
+            (New-Object Net.WebClient).DownloadFile("https://github.com/Squirrel/Squirrel.Windows/releases/download/1.4.4/Squirrel.Windows-1.4.4.zip",
+                "$CMAKE_BINARY_DIR/squirrel/squirrel.zip")
+            7z e "$CMAKE_BINARY_DIR/squirrel/squirrel.zip" -o"$CMAKE_BINARY_DIR/squirrel" -r -y | Out-Null
+        }
+
+        # make the path we'll copy the output to post build
+        New-Item -ItemType Directory -Force -Path $SQUIRREL_BIN_DIR | Out-Null
+        New-Item -ItemType Directory -Force -Path $SQUIRREL_BUILD_DIR | Out-Null
+        New-Item -ItemType Directory -Force -Path $SQUIRREL_RELEASE_DIR | Out-Null
+
+        # Download the previous release information to generate a delta build
+        $LATEST_RELEASE_URL = "https://api.github.com/repos/jroweboy/lemon/releases/latest"
+        $LATEST_RELEASE_JSON = Invoke-WebRequest $LATEST_RELEASE_URL -Headers @{"Accept"="application/json"}
+        $LATEST_RELEASE_JSON.Content -match '.*"tag_name":\s*"([^"]*)".*' | Out-Null
+        $LATEST_RELEASE_TAG = $Matches[1]
+        $RELEASE_URL = "https://github.com/jroweboy/lemon/releases/download/$LATEST_RELEASE_TAG"
+        $PREVIOUS_RELEASE_NUMBER = ($LATEST_RELEASE_TAG -split "-")[1]
+        (New-Object Net.WebClient).DownloadFile("$RELEASE_URL/RELEASES", "$SQUIRREL_RELEASE_DIR/RELEASES")
+        (New-Object Net.WebClient).DownloadFile("$RELEASE_URL/Citra-0.1.$PREVIOUS_RELEASE_NUMBER-full.nupkg", "$SQUIRREL_RELEASE_DIR/Citra-0.1.$PREVIOUS_RELEASE_NUMBER-full.nupkg")
+
+        # Copy the files to the folder for nuget to package
+        Copy-Item -path "$BIN_FOLDER/*" -recurse -force -destination $SQUIRREL_BIN_DIR
+        Copy-Item -path $MSVC_RUNTIME_INSTALLER -force -destination $SQUIRREL_BIN_DIR
+
+        # build the nuget file
+        cmd /c "$CMAKE_BINARY_DIR/nuget/nuget.exe pack $CMAKE_BINARY_DIR/citra.nuspec -BasePath $SQUIRREL_BUILD_DIR -OutputDirectory $SQUIRREL_BUILD_DIR"
+        echo "Building squirrel"
+        cmd /c "$CMAKE_BINARY_DIR/squirrel/squirrel.exe --releasify $SQUIRREL_BUILD_DIR/Citra.0.1.$APPVEYOR_BUILD_NUMBER.nupkg --releaseDir=$SQUIRREL_RELEASE_DIR --icon=$CMAKE_SOURCE_DIR/dist/citra.ico"
+
+        # copy the files to the root dir so it'll be easier to make them artifacts
+        Copy-Item -path "$SQUIRREL_RELEASE_DIR/Citra*.nupkg" -recurse -force -destination $CMAKE_SOURCE_DIR
+        Copy-Item -path "$SQUIRREL_RELEASE_DIR/RELEASES" -recurse -force -destination $CMAKE_SOURCE_DIR
+        Copy-Item -path "$SQUIRREL_RELEASE_DIR/Setup.exe" -recurse -force -destination $CMAKE_SOURCE_DIR
+
+artifacts:
+  - path: Citra-0.1.$(APPVEYOR_BUILD_NUMBER)-full.nupkg
+    name: FullPkg
+  - path: Citra-0.1.$(APPVEYOR_BUILD_NUMBER)-delta.nupkg
+    name: DeltaPkg
+  - path: Setup.exe
+    name: Installer
+  - path: RELEASES
+    name: RELEASES
+
 on_success:
     # copying the needed QT Dlls is now done post build. See the CMakeLists.txt file in the citra-qt folder
   - ps: >
         if (!"$env:APPVEYOR_PULL_REQUEST_TITLE" -and ("$env:APPVEYOR_REPO_BRANCH" -eq "master"))
           {
+            $GITDATE = $(git show -s --date=short --format='%ad') -replace "-",""
+            $GITREV = $(git show -s --format='%h')
+
             $GITDATE = $(git show -s --date=short --format='%ad') -replace "-",""
             $GITREV = $(git show -s --format='%h')
             # Where are these spaces coming from? Regardless, let's remove them
@@ -56,7 +143,6 @@ on_success:
             7z a $BUILD_NAME .\build\bin\release\* .\license.txt .\README.md
             # Do a second archive with only the binaries (excludes dlls) and documentation
             7z a $BUILD_NAME_NOQT .\build\bin\release\*.exe .\license.txt .\README.md
-
 
             # Download WinSCP and upload to server
             choco install winscp.portable
