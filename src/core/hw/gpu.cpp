@@ -187,6 +187,13 @@ inline void Write(u32 addr, const T data) {
                     u32 output_width = config.texture_copy.output_width * 16;
                     u32 output_gap = config.texture_copy.output_gap * 16;
 
+                    if (input_width == 0 || output_width == 0) {
+                        LOG_ERROR(HW_GPU, "TextureCopy: using texture that has zero width (input: %u, output: %u)",
+                            input_width,
+                            output_width);
+                        break;
+                    }
+
                     size_t contiguous_input_size = config.texture_copy.size / input_width * (input_width + input_gap);
                     Memory::RasterizerFlushRegion(config.GetPhysicalInputAddress(), static_cast<u32>(contiguous_input_size));
 
